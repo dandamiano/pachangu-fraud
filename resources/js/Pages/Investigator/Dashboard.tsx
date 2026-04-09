@@ -1,6 +1,15 @@
 import React from 'react';
 
-export default function InvestigatorDashboard({ transactions }) {
+interface Transaction {
+    id: number;
+    amount: number;
+}
+
+interface InvestigatorDashboardProps {
+    transactions: Transaction[];
+}
+
+export default function InvestigatorDashboard({ transactions }: InvestigatorDashboardProps) {
     return (
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-4">Investigator Dashboard</h1>

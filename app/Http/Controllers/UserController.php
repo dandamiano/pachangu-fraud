@@ -13,7 +13,7 @@ class UserController extends Controller
     public function index()
     {
         return Inertia::render('Admin/Users', [
-            'users' => User::all()
+            'users' => User::latest()->get()
         ]);
     }
 
@@ -23,6 +23,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required',
             'email' => 'required|email|unique:users',
+            'password' => 'required|min:6',
             'role' => 'required'
         ]);
 
@@ -34,41 +35,49 @@ class UserController extends Controller
             'is_active' => true,
         ]);
 
-        // If request is from API (Postman)
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'User created successfully',
-                'user' => $user
-            ]);
-        }
-
-        // If request is from UI (Inertia/React)
         return redirect()->back()->with('success', 'User created successfully');
     }
 
-    // Update role
+    // Update user (FULL UPDATE ✅)
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $user->update([
-            'role' => $request->role
+
+        $request->validate([
+            'name' => 'required',
+            'email' => "required|email|unique:users,email,$id",
+            'role' => 'required'
         ]);
 
-        return back();
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+        ];
+
+        // Only update password if provided
+        if ($request->password) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        return redirect()->back()->with('success', 'User updated successfully');
     }
 
-    // Deactivate user
+    // Deactivate user (better UX wording)
     public function destroy($id)
     {
         $user = User::findOrFail($id);
+
         $user->update(['is_active' => false]);
 
-        return back();
+        return redirect()->back()->with('success', 'User deactivated successfully');
     }
 
+    // First admin setup (optional)
     public function storeFirstAdmin(Request $request)
     {
-        // Validate input
         $request->validate([
             'name' => 'required',
             'email' => 'required|email|unique:users',

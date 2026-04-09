@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Services\FraudService;
+use Inertia\Inertia;
 
 // class TransactionController extends Controller
 // {
@@ -27,7 +28,9 @@ class TransactionController extends Controller
     // List all transactions
     public function index()
     {
-        return response()->json(Transaction::all());
+        return Inertia::render('Admin/Transactions', [
+            'transactions' => Transaction::with('fraudLog')->latest()->get()
+        ]);
     }
 
     // Store a transaction (simulation)
