@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 
 interface AdminLayoutProps {
     children: React.ReactNode;
@@ -15,13 +15,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         { name: "Reports", href: "/reports" },
     ];
 
+    const handleLogout = () => {
+        router.post('/logout');
+    };
+
     return (
         <div className="flex h-screen bg-gray-100">
             {/* Sidebar */}
-            <div className="w-64 bg-blue-900 text-white p-4">
+            <div className="w-64 bg-blue-900 text-white p-4 flex flex-col">
                 <h1 className="text-xl font-bold mb-6">Admin Panel</h1>
 
-                <nav className="space-y-2">
+                <nav className="space-y-2 flex-1">
                     {navItems.map((item) => (
                         <Link
                             key={item.name}
@@ -36,6 +40,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         </Link>
                     ))}
                 </nav>
+
+                {/* Logout Button */}
+                <button
+                    onClick={handleLogout}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white p-2 rounded mt-4"
+                >
+                    Logout
+                </button>
             </div>
 
             {/* Main Content */}
