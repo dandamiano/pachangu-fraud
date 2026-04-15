@@ -42,36 +42,34 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin', [DashboardController::class, 'admin'])->name('admin.dashboard');
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/reports', function () {
+            return Inertia::render('Admin/Reports', [
+                'totalTransactions' => \App\Models\Transaction::count(),
+                'fraudCases' => \App\Models\Transaction::whereHas('fraudLog', function($q) {
+                    $q->where('is_fraud', true);
+                })->count(),
+                'totalUsers' => \App\Models\User::count(),
+            ]);
+        })->name('reports.index');
     });
 
     Route::middleware(['role:investigator'])->group(function () {
         Route::get('/investigator', [DashboardController::class, 'investigator'])->name('investigator.dashboard');
+        Route::get('/investigator/reports', [DashboardController::class, 'investigatorReports'])->name('investigator.reports');
     });
-
-});
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store');
-    Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
-    Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
-
-    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-
-    Route::get('/reports', function () {
-        return Inertia::render('Admin/Reports', [
-            'totalTransactions' => \App\Models\Transaction::count(),
-            'fraudCases' => \App\Models\Transaction::whereHas('fraudLog', function($q) {
-                $q->where('is_fraud', true);
-            })->count(),
-            'totalUsers' => \App\Models\User::count(),
-        ]);
-    })->name('reports.index');
-});
-
-Route::middleware(['auth'])->group(function () {
     Route::get('/portal', [PortalController::class, 'index'])->name('portal');
     Route::post('/portal/submit', [PortalController::class, 'submit']);
+});
+
+// Transaction approval/rejection routes
+Route::middleware(['auth', 'role:investigator|admin'])->group(function () {
+    Route::post('/transactions/{id}/approve', [TransactionController::class, 'approve']);
+    Route::post('/transactions/{id}/reject', [TransactionController::class, 'reject']);
 });
 
 require __DIR__.'/auth.php';

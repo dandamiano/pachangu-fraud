@@ -78,4 +78,64 @@ class TransactionController extends Controller
             'fraud_analysis' => $fraudResult,
         ]);
     }
+
+    // Approve a flagged transaction
+    public function approve($id)
+    {
+        try {
+            $transaction = Transaction::findOrFail($id);
+            $transaction->update(['status' => 'completed']);
+
+            \Log::info('Transaction Approved', [
+                'transaction_id' => $id,
+                'approved_by' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction approved successfully',
+                'transaction' => $transaction
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Approval Failed', [
+                'transaction_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to approve transaction'
+            ], 500);
+        }
+    }
+
+    // Reject a flagged transaction
+    public function reject($id)
+    {
+        try {
+            $transaction = Transaction::findOrFail($id);
+            $transaction->update(['status' => 'rejected']);
+
+            \Log::info('Transaction Rejected', [
+                'transaction_id' => $id,
+                'rejected_by' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction rejected successfully',
+                'transaction' => $transaction
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Rejection Failed', [
+                'transaction_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to reject transaction'
+            ], 500);
+        }
+    }
 }
