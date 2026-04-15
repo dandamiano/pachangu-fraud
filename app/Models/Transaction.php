@@ -18,4 +18,9 @@ class Transaction extends Model
     {
         return $this->hasOne(FraudLog::class); // One transaction has one fraud log
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

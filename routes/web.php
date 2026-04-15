@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\PortalController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -66,6 +67,11 @@ Route::middleware(['auth'])->group(function () {
             'totalUsers' => \App\Models\User::count(),
         ]);
     })->name('reports.index');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/portal', [PortalController::class, 'index'])->name('portal');
+    Route::post('/portal/submit', [PortalController::class, 'submit']);
 });
 
 require __DIR__.'/auth.php';

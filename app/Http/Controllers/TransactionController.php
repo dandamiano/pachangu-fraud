@@ -36,14 +36,23 @@ class TransactionController extends Controller
     // Store a transaction (simulation)
     public function store(Request $request)
     {
-        $transaction = Transaction::create($request->all());
+        $transaction = Transaction::create([
+            'user_id' => $request->user_id,
+            'amount' => $request->amount,
+            'type' => $request->type,
+            'location' => $request->location,
+            'status' => 'pending_review',
+        ]);
 
-        // Run fraud detection
         $fraudResult = app(FraudService::class)->analyze($transaction);
+
+        if (! $fraudResult['is_fraud']) {
+            $transaction->update(['status' => 'completed']);
+        }
 
         return response()->json([
             'transaction' => $transaction,
-            'fraud_analysis' => $fraudResult
+            'fraud_analysis' => $fraudResult,
         ]);
     }
 
@@ -55,14 +64,18 @@ class TransactionController extends Controller
             'amount' => $request->amount,
             'type' => $request->type ?? 'payment',
             'location' => $request->location ?? 'Unknown',
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
 
         $fraudResult = app(FraudService::class)->analyze($transaction);
 
+        if ($fraudResult['is_fraud']) {
+            $transaction->update(['status' => 'pending_review']);
+        }
+
         return response()->json([
             'message' => 'Callback received',
-            'fraud_analysis' => $fraudResult
+            'fraud_analysis' => $fraudResult,
         ]);
     }
 }
