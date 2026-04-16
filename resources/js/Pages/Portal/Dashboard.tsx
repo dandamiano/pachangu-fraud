@@ -71,6 +71,8 @@ export default function Dashboard({ transactions, stats, user }: Props) {
             }
 
             if (data.success && data.redirect) {
+                // External redirect to payment gateway for retry
+                console.log('Redirecting to retry payment:', data.redirect);
                 window.location.href = data.redirect;
                 return;
             }
@@ -421,6 +423,10 @@ export default function Dashboard({ transactions, stats, user }: Props) {
                                                         ) : transaction.status === 'rejected' ? (
                                                             <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                                                                 Rejected
+                                                            </span>
+                                                        ) : transaction.status === 'completed' ? (
+                                                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                                Completed
                                                             </span>
                                                         ) : (
                                                             <span className="px-3 py-1 text-xs text-gray-500">—</span>

@@ -46,7 +46,7 @@ class DashboardController extends Controller
             'total_flagged' => $transactions->count(),
             'high_risk' => $transactions->where('fraudLog.risk_score', '>', 70)->count(),
             'pending_review' => $transactions->where('status', 'pending_review')->count(),
-            'approved' => $transactions->where('status', 'completed')->count(),
+            'approved' => $transactions->whereIn('status', ['completed', 'approved'])->count(),
         ];
 
         return Inertia::render('Investigator/Dashboard', [

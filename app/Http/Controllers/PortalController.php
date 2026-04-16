@@ -158,4 +158,110 @@ class PortalController extends Controller
             ], 500);
         }
     }
+
+    public function retry($id)
+    {
+        $transaction = Transaction::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->where('status', 'approved')
+            ->whereHas('fraudLog') // Only allow retry for transactions that were flagged
+            ->firstOrFail();
+
+        try {
+            \Log::info('Retrying approved transaction', [
+                'transaction_id' => $transaction->id,
+                'user_id' => auth()->id()
+            ]);
+
+            // For approved transactions being retried, treat as normal payment flow
+            // Redirect to PayChangu for payment processing
+            $paychanguUrl = env('PAYCHANGU_API_URL', 'https://api.paychangu.com/payment');
+
+            // For development: if PAYCHANGU_TEST_MODE is enabled, use mock response
+            if (env('PAYCHANGU_TEST_MODE', false)) {
+                \Log::info('Using PayChangu test mode (mock) for retry');
+                $payData = [
+                    'data' => [
+                        'checkout_url' => 'https://checkout.paychangu.com/mock-retry-' . rand(100000, 999999),
+                        'reference' => 'RETRY-TEST-' . $transaction->id
+                    ]
+                ];
+            } else {
+                $response = Http::timeout(30)->retry(2, 1000)->withHeaders([
+                    'Authorization' => 'Bearer ' . env('PAYCHANGU_TEST_KEY', 'sec-test-iA4dZR7CJ0Ku6wucXiRCZKVsqLDyQwD8'),
+                    'Accept' => 'application/json',
+                ])->post($paychanguUrl, [
+                    "amount" => (string)$transaction->amount,
+                    "currency" => "MWK",
+                    "email" => auth()->user()->email,
+                    "first_name" => auth()->user()->name,
+                    "last_name" => auth()->user()->last_name ?? "Banda",
+                    "callback_url" => "https://webhook.site/9d0b00ba-9a69-44fa-a43d-a82c33c36fdc",
+                    "return_url" => url('/portal'),
+                    "tx_ref" => 'RETRY-' . $transaction->id . '-' . time(),
+                    "customization" => [
+                        "title" => "Retry Payment",
+                        "description" => "Secure Payment Retry"
+                    ],
+                    "meta" => [
+                        "uuid" => "uuid",
+                        "response" => "Response",
+                        "retry_transaction_id" => $transaction->id
+                    ]
+                ]);
+
+                \Log::info('PayChangu Retry Response', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+
+                if (!$response->successful()) {
+                    \Log::error('PayChangu API Error on Retry', [
+                        'status' => $response->status(),
+                        'body' => $response->body(),
+                        'transaction_id' => $transaction->id
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Payment gateway error (HTTP ' . $response->status() . '). Please try again.'
+                    ], 400);
+                }
+
+                $payData = $response->json();
+            }
+
+            if (!isset($payData['data']['checkout_url'])) {
+                \Log::error('PayChangu Invalid Response on Retry', [
+                    'data' => $payData,
+                    'transaction_id' => $transaction->id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid payment response. Please try again.'
+                ], 400);
+            }
+
+            \Log::info('Retry Payment Redirect', [
+                'checkout_url' => $payData['data']['checkout_url'],
+                'transaction_id' => $transaction->id
+            ]);
+
+            // Return JSON for frontend to handle redirect
+            return response()->json([
+                'success' => true,
+                'redirect' => $payData['data']['checkout_url'],
+                'message' => 'Redirecting to payment gateway for retry...'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Retry Failed', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to retry transaction.'
+            ], 500);
+        }
+    }
 }

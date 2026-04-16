@@ -59,6 +59,43 @@ class TransactionController extends Controller
     // Callback from PayChangu or simulated webhook
     public function callback(Request $request)
     {
+        // Check if this is a retry transaction
+        $retryTransactionId = $request->input('meta.retry_transaction_id') ?? $request->input('retry_transaction_id');
+
+        if ($retryTransactionId) {
+            // This is a retry - update existing transaction
+            $transaction = Transaction::find($retryTransactionId);
+
+            if ($transaction) {
+                \Log::info('Processing retry callback', [
+                    'retry_transaction_id' => $retryTransactionId,
+                    'transaction_status' => $transaction->status
+                ]);
+
+                // Mark the retry transaction as completed
+                $transaction->update(['status' => 'completed']);
+
+                \Log::info('Retry transaction marked as completed', [
+                    'transaction_id' => $transaction->id
+                ]);
+
+                return response()->json([
+                    'message' => 'Retry callback processed successfully',
+                    'transaction_id' => $transaction->id,
+                    'status' => 'completed'
+                ]);
+            } else {
+                \Log::error('Retry transaction not found', [
+                    'retry_transaction_id' => $retryTransactionId
+                ]);
+
+                return response()->json([
+                    'error' => 'Retry transaction not found'
+                ], 404);
+            }
+        }
+
+        // This is a new transaction (original flow)
         $transaction = Transaction::create([
             'user_id' => $request->user_id ?? 1,
             'amount' => $request->amount,
@@ -79,15 +116,27 @@ class TransactionController extends Controller
         ]);
     }
 
-    // Approve a flagged transaction
+    // Approve a flagged transaction and allow user retry
     public function approve($id)
     {
+        \Log::info('Approve request received', [
+            'id_param' => $id,
+            'user_id' => auth()->id(),
+            'user_role' => auth()->user()?->role
+        ]);
+
+        $transaction = Transaction::findOrFail($id);
+
+        \Log::info('Transaction found', [
+            'transaction_id' => $transaction->id,
+            'current_status' => $transaction->status
+        ]);
+
         try {
-            $transaction = Transaction::findOrFail($id);
-            $transaction->update(['status' => 'completed']);
+            $transaction->update(['status' => 'approved']);
 
             \Log::info('Transaction Approved', [
-                'transaction_id' => $id,
+                'transaction_id' => $transaction->id,
                 'approved_by' => auth()->id()
             ]);
 
@@ -98,7 +147,7 @@ class TransactionController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Approval Failed', [
-                'transaction_id' => $id,
+                'transaction_id' => $transaction->id,
                 'error' => $e->getMessage()
             ]);
             
@@ -112,12 +161,24 @@ class TransactionController extends Controller
     // Reject a flagged transaction
     public function reject($id)
     {
+        \Log::info('Reject request received', [
+            'id_param' => $id,
+            'user_id' => auth()->id(),
+            'user_role' => auth()->user()?->role
+        ]);
+
+        $transaction = Transaction::findOrFail($id);
+
+        \Log::info('Transaction found for rejection', [
+            'transaction_id' => $transaction->id,
+            'current_status' => $transaction->status
+        ]);
+
         try {
-            $transaction = Transaction::findOrFail($id);
             $transaction->update(['status' => 'rejected']);
 
             \Log::info('Transaction Rejected', [
-                'transaction_id' => $id,
+                'transaction_id' => $transaction->id,
                 'rejected_by' => auth()->id()
             ]);
 
@@ -128,7 +189,7 @@ class TransactionController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Rejection Failed', [
-                'transaction_id' => $id,
+                'transaction_id' => $transaction->id,
                 'error' => $e->getMessage()
             ]);
             
