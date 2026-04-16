@@ -51,7 +51,7 @@ function StatsCard({
 }: {
     label: string;
     value: number;
-    icon: string;
+    icon: React.ReactNode;
     color: string;
 }) {
     const bgColorClass = {
@@ -360,7 +360,9 @@ export default function InvestigatorDashboard({
                 {/* Success Message */}
                 {successMessage && (
                     <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
-                        <span className="text-xl">✓</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M16.704 5.293a1 1 0 010 1.414l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 011.414-1.414L8 11.086l6.793-6.793a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
                         {successMessage}
                     </div>
                 )}
@@ -370,25 +372,43 @@ export default function InvestigatorDashboard({
                     <StatsCard
                         label="Total Flagged"
                         value={stats.total_flagged || 0}
-                        icon="🚩"
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                                <path d="M7.5 2C6.672 2 6 2.672 6 3.5V20a1 1 0 102 0V14.268l.736-.245a2 2 0 011.236 0l2.086.695 2.08-.693a2 2 0 011.238 0l2.086.695 1.657-.552A1 1 0 0020 13V4a1 1 0 00-1.45-.894l-1.638.59a2 2 0 01-1.238 0l-2.086-.695-2.08.693a2 2 0 01-1.238 0L8.736 3.255 8 3.5V3.5A1.5 1.5 0 017.5 2z" />
+                            </svg>
+                        }
                         color="red"
                     />
                     <StatsCard
                         label="High Risk"
                         value={stats.high_risk || 0}
-                        icon="⚠️"
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                                <path fillRule="evenodd" d="M10.29 3.86a1 1 0 011.42 0l8.29 8.29a1 1 0 01.21 1.09l-7.5 15A1 1 0 0112 28h-8a1 1 0 01-.92-1.4l7.5-15a1 1 0 01.21-1.09l1.5-1.5zM12 9v4m0 4h.01" clipRule="evenodd" />
+                            </svg>
+                        }
                         color="red"
                     />
                     <StatsCard
                         label="Pending Review"
                         value={stats.pending_review || 0}
-                        icon="⏳"
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                                <path d="M12 8v5l3 3a1 1 0 101.414-1.414L13 11.586V8a1 1 0 10-2 0z" />
+                                <path fillRule="evenodd" d="M4 12a8 8 0 1116 0 8 8 0 01-16 0zm8-9a9 9 0 100 18 9 9 0 000-18z" clipRule="evenodd" />
+                            </svg>
+                        }
                         color="yellow"
                     />
                     <StatsCard
                         label="Approved"
                         value={stats.approved || 0}
-                        icon="✓"
+                        icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                                <path fillRule="evenodd" d="M10.28 15.78a.75.75 0 001.06 0l5.47-5.47a.75.75 0 10-1.06-1.06L11 13.69 9.28 11.97a.75.75 0 10-1.06 1.06l2.06 2.05z" clipRule="evenodd" />
+                                <path d="M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                            </svg>
+                        }
                         color="green"
                     />
                 </div>
