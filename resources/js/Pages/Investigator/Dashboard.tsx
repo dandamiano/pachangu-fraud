@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePage } from '@inertiajs/react';
+import { usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 interface FraudLog {
@@ -114,6 +114,7 @@ function StatusBadge({ status }: { status: string }) {
     const getStatusColor = (s: string) => {
         switch (s) {
             case 'completed':
+            case 'approved':
                 return 'bg-green-100 text-green-800';
             case 'pending_review':
                 return 'bg-yellow-100 text-yellow-800';
@@ -149,33 +150,115 @@ function ActionButtons({
     loadingId: number | null;
     disabled: boolean;
 }) {
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
+
     const isLoading = loadingId === transactionId;
 
     if (currentStatus !== 'pending_review') {
         return (
             <span className="text-xs text-gray-500">
-                {currentStatus === 'completed' ? 'Approved' : 'Rejected'}
+                {currentStatus === 'completed' || currentStatus === 'approved' ? 'Approved' : 'Rejected'}
             </span>
         );
     }
 
+    const handleActionClick = (action: 'approve' | 'reject') => {
+        setConfirmAction(action);
+        setShowConfirmModal(true);
+    };
+
+    const handleConfirm = () => {
+        if (confirmAction === 'approve') {
+            onApprove(transactionId);
+        } else if (confirmAction === 'reject') {
+            onReject(transactionId);
+        }
+        setShowConfirmModal(false);
+        setConfirmAction(null);
+    };
+
+    const handleCancel = () => {
+        setShowConfirmModal(false);
+        setConfirmAction(null);
+    };
+
     return (
-        <div className="flex gap-2">
-            <button
-                onClick={() => onApprove(transactionId)}
-                disabled={isLoading || disabled}
-                className="px-3 py-1 rounded text-xs font-semibold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-                {isLoading ? 'Processing...' : 'Approve'}
-            </button>
-            <button
-                onClick={() => onReject(transactionId)}
-                disabled={isLoading || disabled}
-                className="px-3 py-1 rounded text-xs font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-                {isLoading ? 'Processing...' : 'Reject'}
-            </button>
-        </div>
+        <>
+            <div className="flex gap-2">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleActionClick('approve');
+                    }}
+                    disabled={isLoading || disabled}
+                    className="px-3 py-1 rounded text-xs font-semibold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {isLoading ? 'Processing...' : 'Approve'}
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleActionClick('reject');
+                    }}
+                    disabled={isLoading || disabled}
+                    className="px-3 py-1 rounded text-xs font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                    {isLoading ? 'Processing...' : 'Reject'}
+                </button>
+            </div>
+
+            {/* Confirmation Modal */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+                        <div className="p-6">
+                            <div className="flex items-center mb-4">
+                                <div className={`p-2 rounded-full ${confirmAction === 'approve' ? 'bg-green-100' : 'bg-red-100'}`}>
+                                    {confirmAction === 'approve' ? (
+                                        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <h3 className="ml-3 text-lg font-semibold text-gray-900">
+                                    Confirm {confirmAction === 'approve' ? 'Approval' : 'Rejection'}
+                                </h3>
+                            </div>
+
+                            <p className="text-gray-600 mb-6">
+                                Do you want to {confirmAction} this transaction?
+                                <br />
+                                <span className="font-medium">Transaction ID: #{transactionId}</span>
+                            </p>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={handleCancel}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirm}
+                                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                                        confirmAction === 'approve'
+                                            ? 'bg-green-600 hover:bg-green-700'
+                                            : 'bg-red-600 hover:bg-red-700'
+                                    }`}
+                                >
+                                    {confirmAction === 'approve' ? 'Approve' : 'Reject'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
 
@@ -301,19 +384,12 @@ export default function InvestigatorDashboard({
     const handleApprove = async (transactionId: number) => {
         setLoadingId(transactionId);
         try {
-            const response = await fetch(`/transactions/${transactionId}/approve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                },
-            });
-            if (response.ok) {
-                setSuccessMessage('Transaction approved successfully!');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            }
+            await router.post(`/transactions/${transactionId}/approve`, {});
+            setSuccessMessage('Transaction approved successfully!');
+            // Reload after showing the message for longer
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
         } catch (error) {
             console.error('Approval failed:', error);
             alert('Failed to approve transaction');
@@ -325,19 +401,11 @@ export default function InvestigatorDashboard({
     const handleReject = async (transactionId: number) => {
         setLoadingId(transactionId);
         try {
-            const response = await fetch(`/transactions/${transactionId}/reject`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                },
-            });
-            if (response.ok) {
-                setSuccessMessage('Transaction rejected successfully!');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            }
+            await router.post(`/transactions/${transactionId}/reject`, {});
+            setSuccessMessage('Transaction rejected successfully!');
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
         } catch (error) {
             console.error('Rejection failed:', error);
             alert('Failed to reject transaction');

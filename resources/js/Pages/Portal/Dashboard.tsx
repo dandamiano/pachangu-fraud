@@ -37,6 +37,7 @@ interface Props {
 export default function Dashboard({ transactions, stats, user }: Props) {
     const { flash } = usePage().props as any;
     const [loading, setLoading] = useState(false);
+    const [retryLoadingId, setRetryLoadingId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'form' | 'history'>('form');
 
     const [form, setForm] = useState({
@@ -44,6 +45,49 @@ export default function Dashboard({ transactions, stats, user }: Props) {
         type: "payment",
         location: "",
     });
+
+    const handleRetry = async (transactionId: number) => {
+        if (retryLoadingId !== null) return;
+
+        setRetryLoadingId(transactionId);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const response = await fetch(`/portal/retry/${transactionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                throw new Error('Invalid server response');
+            }
+
+            if (data.success && data.redirect) {
+                window.location.href = data.redirect;
+                return;
+            }
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            alert('Retry failed. Please try again.');
+        } catch (error: any) {
+            console.error('Retry error:', error);
+            alert(error?.message || 'Retry request failed.');
+        } finally {
+            setRetryLoadingId(null);
+        }
+    };
 
     const handleLogout = () => {
         router.post('/logout');
@@ -105,9 +149,25 @@ export default function Dashboard({ transactions, stats, user }: Props) {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'completed': return 'bg-green-100 text-green-800';
+            case 'approved': return 'bg-blue-100 text-blue-800';
             case 'pending_review': return 'bg-yellow-100 text-yellow-800';
             case 'rejected': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'completed':
+                return 'Completed';
+            case 'approved':
+                return 'Approved — retry payment';
+            case 'pending_review':
+                return 'Pending review';
+            case 'rejected':
+                return 'Rejected';
+            default:
+                return status.replace('_', ' ');
         }
     };
 
@@ -317,6 +377,7 @@ export default function Dashboard({ transactions, stats, user }: Props) {
                                                 <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                                 <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk</th>
                                                 <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                                <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -333,7 +394,7 @@ export default function Dashboard({ transactions, stats, user }: Props) {
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap">
                                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(transaction.status)}`}>
-                                                            {transaction.status.replace('_', ' ')}
+                                                            {getStatusLabel(transaction.status)}
                                                         </span>
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap text-sm text-gray-500">
@@ -347,6 +408,23 @@ export default function Dashboard({ transactions, stats, user }: Props) {
                                                             hour: '2-digit',
                                                             minute: '2-digit'
                                                         })}
+                                                    </td>
+                                                    <td className="p-3 whitespace-nowrap">
+                                                        {transaction.status === 'approved' ? (
+                                                            <button
+                                                                onClick={() => handleRetry(transaction.id)}
+                                                                disabled={retryLoadingId !== null}
+                                                                className="inline-flex items-center px-3 py-1 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                            >
+                                                                {retryLoadingId === transaction.id ? 'Retrying...' : 'Retry'}
+                                                            </button>
+                                                        ) : transaction.status === 'rejected' ? (
+                                                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                                Rejected
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-3 py-1 text-xs text-gray-500">—</span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}

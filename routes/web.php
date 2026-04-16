@@ -43,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
     // Portal is now the main user interface
     Route::get('/portal', [PortalController::class, 'index'])->name('portal');
     Route::post('/portal/submit', [PortalController::class, 'submit']);
+    Route::post('/portal/retry/{id}', [PortalController::class, 'retry'])->name('portal.retry');
 
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin', [DashboardController::class, 'admin'])->name('admin.dashboard');
