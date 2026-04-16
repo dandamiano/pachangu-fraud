@@ -40,6 +40,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Portal is now the main user interface
+    Route::get('/portal', [PortalController::class, 'index'])->name('portal');
+    Route::post('/portal/submit', [PortalController::class, 'submit']);
+
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
@@ -62,8 +66,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/investigator', [DashboardController::class, 'investigator'])->name('investigator.dashboard');
         Route::get('/investigator/reports', [DashboardController::class, 'investigatorReports'])->name('investigator.reports');
     });
-    Route::get('/portal', [PortalController::class, 'index'])->name('portal');
-    Route::post('/portal/submit', [PortalController::class, 'submit']);
 });
 
 // Transaction approval/rejection routes

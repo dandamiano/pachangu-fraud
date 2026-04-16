@@ -22,7 +22,8 @@ class DashboardController extends Controller
             return redirect()->route('investigator.dashboard');
         }
 
-        return Inertia::render('Dashboard'); // normal user
+        // Regular users go to portal (unified transaction interface)
+        return redirect()->route('portal');
     }
 
     // Admin dashboard

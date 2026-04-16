@@ -12,8 +12,21 @@ class PortalController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Portal/TransactionForm', [
-            'transactions' => auth()->user()->transactions()->with('fraudLog')->latest()->get()
+        $user = auth()->user();
+        $transactions = $user->transactions()->with('fraudLog')->latest()->get();
+
+        // Calculate user stats
+        $stats = [
+            'total_transactions' => $transactions->count(),
+            'completed_transactions' => $transactions->where('status', 'completed')->count(),
+            'pending_transactions' => $transactions->where('status', 'pending_review')->count(),
+            'total_amount' => $transactions->where('status', 'completed')->sum('amount'),
+        ];
+
+        return Inertia::render('Portal/Dashboard', [
+            'transactions' => $transactions,
+            'stats' => $stats,
+            'user' => $user,
         ]);
     }
 

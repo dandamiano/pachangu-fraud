@@ -25,6 +25,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             ];
         }
 
+        if (user?.role === 'user') {
+            // Regular users should be redirected to portal, but if they somehow get here
+            return [
+                { name: "My Portal", href: "/portal" },
+            ];
+        }
+
         // Default admin navigation
         return [
             { name: "Dashboard", href: "/admin" },
@@ -43,6 +50,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const getPanelTitle = () => {
         if (user?.role === 'investigator') {
             return "Investigator Panel";
+        }
+        if (user?.role === 'user') {
+            return "User Portal";
         }
         return "Admin Panel";
     };
