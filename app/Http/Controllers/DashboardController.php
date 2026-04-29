@@ -67,6 +67,14 @@ class DashboardController extends Controller
             $q->where('is_fraud', true)->where('risk_score', '>', 70);
         })->count();
 
+        $mediumRiskCases = Transaction::whereHas('fraudLog', function ($q) {
+            $q->where('is_fraud', true)->whereBetween('risk_score', [40, 70]);
+        })->count();
+
+        $lowRiskCases = Transaction::whereHas('fraudLog', function ($q) {
+            $q->where('is_fraud', true)->where('risk_score', '<', 40);
+        })->count();
+
         $approvedCases = Transaction::whereHas('fraudLog', function ($q) {
             $q->where('is_fraud', true);
         })->where('status', 'completed')->count();
@@ -105,21 +113,84 @@ class DashboardController extends Controller
               ->whereMonth('created_at', $date->month)
               ->count();
 
+            $highRisk = Transaction::whereHas('fraudLog', function ($q) {
+                $q->where('is_fraud', true)->where('risk_score', '>', 70);
+            })->whereYear('created_at', $date->year)
+              ->whereMonth('created_at', $date->month)
+              ->count();
+
+            $mediumRisk = Transaction::whereHas('fraudLog', function ($q) {
+                $q->where('is_fraud', true)->whereBetween('risk_score', [40, 70]);
+            })->whereYear('created_at', $date->year)
+              ->whereMonth('created_at', $date->month)
+              ->count();
+
+            $lowRisk = Transaction::whereHas('fraudLog', function ($q) {
+                $q->where('is_fraud', true)->where('risk_score', '<', 40);
+            })->whereYear('created_at', $date->year)
+              ->whereMonth('created_at', $date->month)
+              ->count();
+
             $monthlyStats[] = [
                 'month' => $monthName,
                 'flagged' => $flagged,
                 'approved' => $approved,
                 'rejected' => $rejected,
+                'highRisk' => $highRisk,
+                'mediumRisk' => $mediumRisk,
+                'lowRisk' => $lowRisk,
             ];
+        }
+
+        $recentCases = Transaction::with(['user', 'fraudLog'])
+            ->whereHas('fraudLog', function ($q) {
+                $q->where('is_fraud', true);
+            })
+            ->latest()
+            ->take(8)
+            ->get()
+            ->map(function ($txn) {
+                return [
+                    'id' => "TXN-{$txn->id}",
+                    'user' => $txn->user?->name ?? 'Unknown',
+                    'amount' => (float) $txn->amount,
+                    'location' => $txn->location ?? 'Unknown',
+                    'risk' => $txn->fraudLog->risk_score > 70 ? 'High' : ($txn->fraudLog->risk_score >= 40 ? 'Medium' : 'Low'),
+                    'status' => $txn->status,
+                    'date' => $txn->created_at->format('Y-m-d'),
+                ];
+            })
+            ->toArray();
+
+        $topLocation = Transaction::whereHas('fraudLog', function ($q) {
+                $q->where('is_fraud', true);
+            })
+            ->select('location')
+            ->selectRaw('count(*) as total')
+            ->groupBy('location')
+            ->orderByDesc('total')
+            ->first();
+
+        $latestMonth = end($monthlyStats);
+        $previousMonth = $monthlyStats[count($monthlyStats) - 2] ?? null;
+        $highRiskTrend = 0;
+
+        if ($previousMonth && $previousMonth['highRisk'] > 0) {
+            $highRiskTrend = round((($latestMonth['highRisk'] - $previousMonth['highRisk']) / $previousMonth['highRisk']) * 100);
         }
 
         return Inertia::render('Investigator/Reports', [
             'totalFlagged' => $totalFlagged,
             'highRiskCases' => $highRiskCases,
+            'mediumRiskCases' => $mediumRiskCases,
+            'lowRiskCases' => $lowRiskCases,
             'approvedCases' => $approvedCases,
             'rejectedCases' => $rejectedCases,
             'pendingCases' => $pendingCases,
             'monthlyStats' => $monthlyStats,
+            'recentCases' => $recentCases,
+            'topLocation' => $topLocation?->location ?? 'Unknown',
+            'highRiskTrend' => $highRiskTrend,
         ]);
     }
 }
