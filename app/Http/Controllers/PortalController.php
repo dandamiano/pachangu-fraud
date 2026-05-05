@@ -91,7 +91,7 @@ class PortalController extends Controller
                     "email" => auth()->user()->email,
                     "first_name" => auth()->user()->name,
                     "last_name" => auth()->user()->last_name ?? "Banda",
-                    "callback_url" => "https://webhook.site/9d0b00ba-9a69-44fa-a43d-a82c33c36fdc",
+                    "callback_url" => env('PAYCHANGU_CALLBACK_URL', url('/api/payment/callback')),
                     "return_url" => url('/portal'),
                     "tx_ref" => (string)rand(100000000, 999999999),
                     "customization" => [
@@ -173,6 +173,12 @@ class PortalController extends Controller
                 'user_id' => auth()->id()
             ]);
 
+            // Approved transaction is being retried for payment; mark it completed before redirect
+            $transaction->update(['status' => 'completed']);
+            \Log::info('Retry transaction marked as completed before redirect', [
+                'transaction_id' => $transaction->id
+            ]);
+
             // For approved transactions being retried, treat as normal payment flow
             // Redirect to PayChangu for payment processing
             $paychanguUrl = env('PAYCHANGU_API_URL', 'https://api.paychangu.com/payment');
@@ -196,7 +202,7 @@ class PortalController extends Controller
                     "email" => auth()->user()->email,
                     "first_name" => auth()->user()->name,
                     "last_name" => auth()->user()->last_name ?? "Banda",
-                    "callback_url" => "https://webhook.site/9d0b00ba-9a69-44fa-a43d-a82c33c36fdc",
+                    "callback_url" => env('PAYCHANGU_CALLBACK_URL', url('/api/payment/callback')),
                     "return_url" => url('/portal'),
                     "tx_ref" => 'RETRY-' . $transaction->id . '-' . time(),
                     "customization" => [
