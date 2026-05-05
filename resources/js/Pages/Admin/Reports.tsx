@@ -81,6 +81,17 @@ export default function Reports({
     const [dateTo, setDateTo] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [riskFilter, setRiskFilter] = useState("All");
+    const [showActions, setShowActions] = useState(false);
+
+    const download = (type: string) => {
+        window.open(`/reports/${type}/download`, '_blank');
+        setShowActions(false);
+    };
+
+    const printReport = () => {
+        setShowActions(false);
+        window.print();
+    };
 
     const fraudRate = totalTransactions > 0 ? ((fraudCases / totalTransactions) * 100).toFixed(1) : "0.0";
 
@@ -117,6 +128,49 @@ export default function Reports({
                             <p className="text-sm text-gray-500 mt-2">
                                 Active users: {totalUsers}
                             </p>
+                        </div>
+                        <div className="relative inline-flex">
+                            <button
+                                type="button"
+                                onClick={() => setShowActions((open) => !open)}
+                                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+                            >
+                                Report actions
+                            </button>
+                            {showActions ? (
+                                <div className="absolute right-0 top-full mt-2 w-64 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl">
+                                    <div className="space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => download('fraud-summary')}
+                                            className="w-full rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-100"
+                                        >
+                                            Download Fraud Summary PDF
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => download('suspicious-activity')}
+                                            className="w-full rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-100"
+                                        >
+                                            Download Suspicious Activity PDF
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => download('risk-distribution')}
+                                            className="w-full rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm font-medium text-slate-900 hover:bg-slate-100"
+                                        >
+                                            Download Risk Distribution PDF
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={printReport}
+                                            className="w-full rounded-2xl bg-slate-900 px-3 py-2 text-left text-sm font-medium text-white hover:bg-slate-800"
+                                        >
+                                            Print report
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 </div>
