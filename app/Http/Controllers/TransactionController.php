@@ -41,14 +41,17 @@ class TransactionController extends Controller
             'amount' => $request->amount,
             'type' => $request->type,
             'location' => $request->location,
-            'status' => 'pending_review',
+            'status' => 'pending',
         ]);
 
         $fraudResult = app(FraudService::class)->analyze($transaction);
 
+        // Transaction status is set by fraud analysis
+        // If no fraud detected (low risk), auto-approve; otherwise require investigator review
         if (! $fraudResult['is_fraud']) {
             $transaction->update(['status' => 'completed']);
         }
+        // If fraud flagged, stays in pending_review for investigator decision
 
         return response()->json([
             'transaction' => $transaction,
@@ -101,14 +104,16 @@ class TransactionController extends Controller
             'amount' => $request->amount,
             'type' => $request->type ?? 'payment',
             'location' => $request->location ?? 'Unknown',
-            'status' => 'completed',
+            'status' => 'pending',
         ]);
 
         $fraudResult = app(FraudService::class)->analyze($transaction);
 
-        if ($fraudResult['is_fraud']) {
-            $transaction->update(['status' => 'pending_review']);
+        // If low risk score, auto-approve; otherwise investigator reviews
+        if (! $fraudResult['is_fraud']) {
+            $transaction->update(['status' => 'completed']);
         }
+        // If fraud flagged (high risk), stays in pending_review for investigator decision
 
         return response()->json([
             'message' => 'Callback received',

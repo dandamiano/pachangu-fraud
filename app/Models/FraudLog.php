@@ -10,7 +10,8 @@ class FraudLog extends Model
         'transaction_id', // ADD THIS
         'risk_score',
         'is_fraud',
-        'reason'
+        'reason',
+        'meta'
     ];
 
     public function transaction()
