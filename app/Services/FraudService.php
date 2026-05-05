@@ -4,7 +4,11 @@ namespace App\Services;
 
 use App\Models\FraudLog;
 use App\Models\Transaction;
+use App\Models\User;
+use App\Notifications\InvestigatorAlertNotification;
+use App\Notifications\TransactionFlaggedNotification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Notification;
 use Carbon\Carbon;
 
 class FraudService
@@ -41,8 +45,12 @@ class FraudService
         // Flag transaction as potential fraud if risk score is high, but let investigator make final decision
         $isFraud = $riskScore >= $config['decision_thresholds']['pending_review'];
 
-        // Update transaction status
+        $previousStatus = $transaction->status;
         $transaction->update(['status' => $status]);
+
+        if ($this->isFlaggedStatus($status) && ! $this->isFlaggedStatus($previousStatus)) {
+            $this->notifyFlaggedTransaction($transaction);
+        }
 
         // Combine reasons
         $reason = !empty($reasons) ? implode('; ', $reasons) : 'Normal transaction';
@@ -151,6 +159,34 @@ class FraudService
             // All transactions with risk score >= approved threshold are flagged for investigator review
             // No automatic blocking - investigator decides approval/rejection
             return 'pending_review';
+        }
+    }
+
+    private function isFlaggedStatus(string $status): bool
+    {
+        return in_array($status, ['pending_review', 'blocked'], true);
+    }
+
+    private function notifyFlaggedTransaction(Transaction $transaction): void
+    {
+        $transactionUser = $transaction->user ?? User::find($transaction->user_id);
+
+        if ($transactionUser) {
+            $transactionUser->notify(new TransactionFlaggedNotification($transaction));
+            \Log::info('Queued TransactionFlaggedNotification', [
+                'transaction_id' => $transaction->id,
+                'user_id' => $transactionUser->id,
+            ]);
+        }
+
+        $investigators = User::where('role', 'investigator')->get();
+
+        if ($investigators->isNotEmpty()) {
+            Notification::send($investigators, new InvestigatorAlertNotification($transaction));
+            \Log::info('Queued InvestigatorAlertNotification', [
+                'transaction_id' => $transaction->id,
+                'investigator_count' => $investigators->count(),
+            ]);
         }
     }
 }

@@ -37,3 +37,12 @@ Route::prefix('users')->group(function () {
 });
 // Temporary route to create first admin
 Route::post('/setup-admin', [UserController::class, 'storeFirstAdmin']);
+
+// Route::get('/test-email', function () {
+//     \Mail::raw('Test Email Working!', function ($message) {
+//         $message->to('anniedamianoe@gmail.com')
+//                 ->subject('Test Email');
+//     });
+
+//     return "Email sent!";
+// });

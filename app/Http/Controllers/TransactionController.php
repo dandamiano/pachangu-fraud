@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
+use App\Notifications\TransactionDecisionNotification;
 use App\Services\FraudService;
 use Inertia\Inertia;
 
@@ -139,6 +140,15 @@ class TransactionController extends Controller
 
         try {
             $transaction->update(['status' => 'approved']);
+            $transaction->load('user');
+
+            if ($transaction->user) {
+                $transaction->user->notify(new TransactionDecisionNotification($transaction));
+                \Log::info('Queued TransactionDecisionNotification for approval', [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => $transaction->user->id,
+                ]);
+            }
 
             \Log::info('Transaction Approved', [
                 'transaction_id' => $transaction->id,
@@ -181,6 +191,15 @@ class TransactionController extends Controller
 
         try {
             $transaction->update(['status' => 'rejected']);
+            $transaction->load('user');
+
+            if ($transaction->user) {
+                $transaction->user->notify(new TransactionDecisionNotification($transaction));
+                \Log::info('Queued TransactionDecisionNotification for rejection', [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => $transaction->user->id,
+                ]);
+            }
 
             \Log::info('Transaction Rejected', [
                 'transaction_id' => $transaction->id,

@@ -44,7 +44,7 @@ class PortalController extends Controller
             'amount' => $request->amount,
             'type' => $request->type,
             'location' => $request->location,
-            'status' => 'pending_review',
+            'status' => 'pending',
         ]);
 
         $fraudResult = app(FraudService::class)->analyze($transaction);
